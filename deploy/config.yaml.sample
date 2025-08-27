@@ -1,0 +1,32 @@
+server:
+  addr: ":8080"
+  
+db:
+  dsn: "username:password@tcp(your-tidb-host:4000)/your-database?tls=true&parseTime=true"
+  maxOpenConns: 10
+  
+llm:
+  embedder:
+    provider: "openai"   # openai|anthropic|local
+    model: "text-embedding-3-small"
+    api_key_env: "OPENAI_API_KEY"
+  generator:
+    provider: "anthropic" # anthropic|openai|local
+    model: "claude-3-5-sonnet"
+    api_key_env: "ANTHROPIC_API_KEY"
+    
+ingest:
+  slowquery_interval: "5m"
+  docs:
+    sources:
+      - type: "http"
+        url: "https://docs.pingcap.com/tidb/stable/"
+    ocr_enabled: false
+    
+safety:
+  max_stmt_seconds: 10
+  forbid_patterns: ["DROP ", "TRUNCATE ", "ALTER "]
+  
+vector:
+  dim: 768
+  top_k: 8

@@ -51,6 +51,27 @@ CREATE TABLE IF NOT EXISTS app_embeddings (
     VECTOR INDEX vec_idx (embedding),
     INDEX idx_doc_chunk (doc_id, chunk_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Rewrites table for optimization results
+CREATE TABLE IF NOT EXISTS app_rewrites (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    slow_query_id BIGINT NOT NULL,
+    original_sql TEXT NOT NULL,
+    optimized_sql TEXT NOT NULL,
+    pattern_analysis JSON NOT NULL,
+    rationale TEXT NOT NULL,
+    expected_improvement TEXT NOT NULL,
+    caveats TEXT NOT NULL,
+    confidence_score DECIMAL(3,2) NOT NULL DEFAULT 0.50,
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP NULL,
+    FOREIGN KEY (slow_query_id) REFERENCES app_slow_queries(id),
+    INDEX idx_slow_query_id (slow_query_id),
+    INDEX idx_status (status),
+    INDEX idx_confidence_score (confidence_score),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `
 
 const TestSchemaSQL = `
@@ -163,6 +184,26 @@ func (db *DB) SetupTestSchema() error {
 		    FOREIGN KEY (doc_id) REFERENCES app_documents(id),
 		    VECTOR INDEX vec_idx ((VEC_COSINE_DISTANCE(embedding))),
 		    INDEX idx_doc_chunk (doc_id, chunk_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		
+		`CREATE TABLE IF NOT EXISTS app_rewrites (
+		    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		    slow_query_id BIGINT NOT NULL,
+		    original_sql TEXT NOT NULL,
+		    optimized_sql TEXT NOT NULL,
+		    pattern_analysis JSON NOT NULL,
+		    rationale TEXT NOT NULL,
+		    expected_improvement TEXT NOT NULL,
+		    caveats TEXT NOT NULL,
+		    confidence_score DECIMAL(3,2) NOT NULL DEFAULT 0.50,
+		    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+		    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		    reviewed_at TIMESTAMP NULL,
+		    FOREIGN KEY (slow_query_id) REFERENCES app_slow_queries(id),
+		    INDEX idx_slow_query_id (slow_query_id),
+		    INDEX idx_status (status),
+		    INDEX idx_confidence_score (confidence_score),
+		    INDEX idx_created_at (created_at)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 		`CREATE TABLE IF NOT EXISTS customers (
 		    id BIGINT PRIMARY KEY AUTO_INCREMENT,

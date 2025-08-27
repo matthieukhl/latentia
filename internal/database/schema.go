@@ -25,6 +25,32 @@ CREATE TABLE IF NOT EXISTS app_slow_queries (
     INDEX idx_source_status (source, status),
     INDEX idx_db (db)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Documents table for RAG
+CREATE TABLE IF NOT EXISTS app_documents (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(500) NOT NULL,
+    content LONGTEXT NOT NULL,
+    category VARCHAR(100),
+    url VARCHAR(512),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_category (category),
+    UNIQUE KEY uk_title (title)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Embeddings table for vector search
+CREATE TABLE IF NOT EXISTS app_embeddings (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    doc_id BIGINT NOT NULL,
+    chunk_id INT NOT NULL,
+    text TEXT NOT NULL,
+    embedding VECTOR(1536) NOT NULL,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (doc_id) REFERENCES app_documents(id),
+    VECTOR INDEX vec_idx (embedding),
+    INDEX idx_doc_chunk (doc_id, chunk_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `
 
 const TestSchemaSQL = `
@@ -91,7 +117,53 @@ CREATE TABLE IF NOT EXISTS order_items (
 // SetupTestSchema creates the test tables
 func (db *DB) SetupTestSchema() error {
 	statements := []string{
-		AppSlowQueriesSQL,
+		`CREATE TABLE IF NOT EXISTS app_slow_queries (
+		    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		    digest VARCHAR(64) NOT NULL,
+		    sample_sql TEXT NOT NULL,
+		    started_at TIMESTAMP NOT NULL,
+		    query_time DOUBLE NOT NULL,
+		    db VARCHAR(64),
+		    index_names TEXT,
+		    is_internal BOOLEAN DEFAULT FALSE,
+		    user VARCHAR(64),
+		    host VARCHAR(64),
+		    tables JSON,
+		    source ENUM('generated', 'information_schema') NOT NULL,
+		    status ENUM('pending', 'analyzing', 'completed') DEFAULT 'pending',
+		    last_analyzed_at TIMESTAMP NULL,
+		    best_rewrite_id BIGINT NULL,
+		    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		    INDEX idx_digest (digest),
+		    INDEX idx_started_at (started_at),
+		    INDEX idx_query_time (query_time),
+		    INDEX idx_source_status (source, status),
+		    INDEX idx_db (db)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		
+		`CREATE TABLE IF NOT EXISTS app_documents (
+		    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		    title VARCHAR(500) NOT NULL,
+		    content LONGTEXT NOT NULL,
+		    category VARCHAR(100),
+		    url VARCHAR(512),
+		    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		    INDEX idx_category (category),
+		    UNIQUE KEY uk_title (title)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		
+		`CREATE TABLE IF NOT EXISTS app_embeddings (
+		    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		    doc_id BIGINT NOT NULL,
+		    chunk_id INT NOT NULL,
+		    text TEXT NOT NULL,
+		    embedding VECTOR(1536) NOT NULL,
+		    metadata JSON,
+		    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		    FOREIGN KEY (doc_id) REFERENCES app_documents(id),
+		    VECTOR INDEX vec_idx ((VEC_COSINE_DISTANCE(embedding))),
+		    INDEX idx_doc_chunk (doc_id, chunk_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 		`CREATE TABLE IF NOT EXISTS customers (
 		    id BIGINT PRIMARY KEY AUTO_INCREMENT,
 		    email VARCHAR(255) NOT NULL,

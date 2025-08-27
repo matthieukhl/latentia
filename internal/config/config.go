@@ -34,6 +34,7 @@ type ProviderConfig struct {
 	Provider  string `mapstructure:"provider"`
 	Model     string `mapstructure:"model"`
 	APIKeyEnv string `mapstructure:"api_key_env"`
+	APIKey    string `mapstructure:"api_key"`
 }
 
 type IngestConfig struct {
